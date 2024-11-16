@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clippy Options</title>
+    <style>
+        body {
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+            font-family: Arial, sans-serif;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+            border: 1px solid #d6e9c6;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+            border: 1px solid #ebccd1;
+        }
+        .current-values {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        .required {
+            color: red;
+            margin-left: 3px;
+        }
+    </style>
+</head>
+<body>
+<h1>Clippy Settings</h1>
+<div class="form-group">
+    <label for="apiKey">API Key<span class="required">*</span>:</label>
+    <input type="password" id="apiKey" placeholder="Enter your API key" required />
+</div>
+<div class="form-group">
+    <label for="apiUrl">API URL<span class="required">*</span>:</label>
+    <input type="text" id="apiUrl" placeholder="Enter API URL (e.g., https://api.example.com)" required />
+</div>
+<button id="save">Save Settings</button>
+<div id="status"></div>
+
+<div class="current-values">
+    <h3>Current Configuration:</h3>
+    <pre id="currentConfig">Loading...</pre>
+</div>
+
+<script src="options.js"></script>
+</body>
+</html>

@@ -25,3 +25,13 @@ chrome.tabs.onUpdated.addListener((
     });
   }
 });
+
+import { getConfigDirect } from './config';
+
+// Listen for messages from content script
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'GET_CONFIG') {
+    getConfigDirect().then(sendResponse);
+    return true; // Will respond asynchronously
+  }
+});
