@@ -1,6 +1,6 @@
 import type {FinetuneV2Client, PostChatCompletionWithDefaults} from "@conjecture-inc/api";
 
-import {config} from "./contentloaded";
+import {config} from "../config";
 
 export type PostFinetuneRequest = Parameters<FinetuneV2Client['finetune']>[0];
 

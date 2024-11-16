@@ -33,3 +33,5 @@ export async function setConfig(config: Partial<Config>): Promise<void> {
     chrome.storage.sync.set(config, resolve);
   });
 }
+
+export let config: Config | undefined;
