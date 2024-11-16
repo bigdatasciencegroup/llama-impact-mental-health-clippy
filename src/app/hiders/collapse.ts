@@ -1,11 +1,24 @@
 interface ClipCollapseOptions {
-  clipSize?: string;  // Size of the paperclip emoji (default: '1.5rem')
-  blurAmount?: string;  // Amount of blur (default: '5px')
-  overlayColor?: string;  // Color of blur overlay (default: 'rgba(255, 255, 255, 0.8)')
-  animationDuration?: string;  // Duration of animations (default: '0.3s')
-  collapsedHeight?: string;  // Height when collapsed (default: '10px')
-  zIndex?: number;  // Base z-index (default: 9999)
+  clipSize?: string;
+  blurAmount?: string;
+  overlayColor?: string;
+  animationDuration?: string;
+  collapsedHeight?: string;
+  zIndex?: number;
 }
+
+const ClipCollapseRegistry = {
+  instances: new Set<() => void>(),
+  register(updateFn: () => void) {
+    this.instances.add(updateFn);
+  },
+  unregister(updateFn: () => void) {
+    this.instances.delete(updateFn);
+  },
+  updateAll() {
+    this.instances.forEach(updateFn => updateFn());
+  }
+};
 
 function createClipCollapse(
   element: HTMLElement,
@@ -35,10 +48,10 @@ function createClipCollapse(
   // Create blur overlay
   const overlay = document.createElement('div');
   Object.assign(overlay.style, {
-    position: 'fixed', // Changed to fixed
+    position: 'fixed',
     backgroundColor: overlayColor,
     backdropFilter: `blur(${blurAmount})`,
-    WebkitBackdropFilter: `blur(${blurAmount})`, // Safari support
+    WebkitBackdropFilter: `blur(${blurAmount})`,
     transition: `opacity ${animationDuration}`,
     pointerEvents: 'none',
     zIndex: zIndex.toString()
@@ -47,7 +60,7 @@ function createClipCollapse(
   // Create clip button
   const clipButton = document.createElement('div');
   Object.assign(clipButton.style, {
-    position: 'fixed', // Changed to fixed
+    position: 'fixed',
     fontSize: clipSize,
     cursor: 'pointer',
     transform: 'rotate(0deg)',
@@ -66,24 +79,65 @@ function createClipCollapse(
   document.body.appendChild(overlay);
   document.body.appendChild(clipButton);
 
-  // Function to update positions
+  // Function to update positions with debouncing
+  let updateTimeout: number | null = null;
   const updatePositions = () => {
-    const rect = element.getBoundingClientRect();
+    if (updateTimeout) {
+      window.clearTimeout(updateTimeout);
+    }
+    updateTimeout = window.setTimeout(() => {
+      const rect = element.getBoundingClientRect();
 
-    // Position overlay
-    Object.assign(overlay.style, {
-      top: `${rect.top}px`,
-      left: `${rect.left}px`,
-      width: `${rect.width}px`,
-      height: `${rect.height}px`
-    });
+      // Position overlay
+      Object.assign(overlay.style, {
+        top: `${rect.top}px`,
+        left: `${rect.left}px`,
+        width: `${rect.width}px`,
+        height: `${rect.height}px`
+      });
 
-    // Position clip button
-    Object.assign(clipButton.style, {
-      top: `${rect.top - 8}px`,
-      left: `${rect.left - 8}px`
-    });
+      // Position clip button
+      Object.assign(clipButton.style, {
+        top: `${rect.top - 8}px`,
+        left: `${rect.left - 8}px`
+      });
+    }, 16); // Debounce for approximately one frame
   };
+
+  // Create observers
+  const resizeObserver = new ResizeObserver(() => {
+    updatePositions();
+  });
+
+  const mutationObserver = new MutationObserver((mutations) => {
+    const shouldUpdate = mutations.some(mutation =>
+      mutation.type === 'attributes' &&
+      (mutation.attributeName === 'style' || mutation.attributeName === 'class')
+    );
+    if (shouldUpdate) {
+      updatePositions();
+    }
+  });
+
+  // Observe the element and its parent for changes
+  resizeObserver.observe(element);
+  mutationObserver.observe(element, {
+    attributes: true,
+    attributeFilter: ['style', 'class']
+  });
+
+  // Also observe parent elements up to body for style/class changes
+  let parent = element.parentElement;
+  while (parent && parent !== document.body) {
+    mutationObserver.observe(parent, {
+      attributes: true,
+      attributeFilter: ['style', 'class']
+    });
+    parent = parent.parentElement;
+  }
+
+  // Register this instance's update function
+  ClipCollapseRegistry.register(updatePositions);
 
   // Track state
   let isCollapsed = true;
@@ -103,8 +157,10 @@ function createClipCollapse(
       clipButton.style.transform = 'rotate(-45deg)';
     }
 
-    // Update positions after height change
-    setTimeout(updatePositions, parseFloat(animationDuration) * 1000);
+    // Update positions of all clips after animation
+    setTimeout(() => {
+      ClipCollapseRegistry.updateAll();
+    }, parseFloat(animationDuration) * 1000);
   };
 
   // Add event listeners
@@ -128,6 +184,18 @@ function createClipCollapse(
     clipButton.removeEventListener('click', toggleCollapse);
     window.removeEventListener('scroll', updatePositions);
     window.removeEventListener('resize', updatePositions);
+
+    // Disconnect observers
+    resizeObserver.disconnect();
+    mutationObserver.disconnect();
+
+    // Unregister this instance
+    ClipCollapseRegistry.unregister(updatePositions);
+
+    // Clear any pending updates
+    if (updateTimeout) {
+      window.clearTimeout(updateTimeout);
+    }
   };
 }
 
