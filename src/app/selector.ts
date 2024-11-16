@@ -132,23 +132,7 @@ export class ElementSelector {
   };
 
   private getElementsInSelection(rect: DOMRect): AccessibilityNodeInfo[] {
-    console.log('Rect:', rect);
     const ret: AccessibilityNodeInfo[] = [];
-
-    if (!this.selectorBox) return [];
-
-    // Get scroll offsets
-    const scrollX = document.documentElement.scrollLeft;
-    const scrollY = document.documentElement.scrollTop;
-
-    // Adjust rect coordinates by adding scroll offset
-    const adjustedRect = {
-      left: rect.left + scrollX,
-      right: rect.right + scrollX,
-      top: rect.top + scrollY,
-      bottom: rect.bottom + scrollY
-    };
-    console.log('Adjusted rect:', adjustedRect);
 
     const tree = [accessibilityTree];
 
@@ -156,27 +140,20 @@ export class ElementSelector {
       const node = tree.pop();
       if (node === undefined) continue;
       tree.push(...(node.children || []));
-
-      // Skip non-leaf nodes
       if (node.children !== undefined && node.children.length > 0) continue;
-
-      // Skip nodes without bounding box or element
-      if (!node.boundingBox || !node.element) continue;
-
-      const {boundingBox} = node;
-      const {top, left, right, bottom} = boundingBox;
-
-      // Compare with scroll-adjusted rect coordinates
-      if (left > adjustedRect.right ||
-        right < adjustedRect.left ||
-        top > adjustedRect.bottom ||
-        bottom < adjustedRect.top) {
+      if (node.boundingBox === undefined) {
         continue;
       }
-
+      const {boundingBox, element} = node;
+      if (boundingBox === undefined || element === undefined) {
+        continue;
+      }
+      const {top, left, right, bottom} = boundingBox;
+      if (left > rect.right + window.scrollX || right < rect.left + window.scrollX || top > rect.bottom + window.scrollY || bottom < rect.top + window.scrollY) {
+        continue;
+      }
       ret.push(node);
     }
-
     return ret;
   }
 
