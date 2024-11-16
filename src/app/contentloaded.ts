@@ -1,4 +1,5 @@
 import {createClipCollapse} from "./hiders/collapse";
+import {ElementSelector} from "./selector";
 
 interface AccessibilityNodeInfo {
   role: string;
@@ -126,21 +127,36 @@ const processTree = async (tree: AccessibilityNodeInfo): Promise<void> => {
     }
   }
 }
-
+export let accessibilityTree: AccessibilityNodeInfo;
 export async function afterDOMLoaded(): Promise<void> {
   try {
+    /**
+     * set up the selector
+     */
+    const selector = new ElementSelector();
+
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (message.action === 'startSelection') {
+        selector.start();
+      }
+      return true;
+    });
+
+    /**
+     * set up the accessibility tree and blurring
+     */
     // Function to get the full tree
     const getAccessibilityTree = () => {
       return processNode(document.body);
     };
 
     // Get initial tree
-    const accessibilityTree = getAccessibilityTree();
+    accessibilityTree = getAccessibilityTree();
 
     // Log the complete tree
     console.log('Initial Accessibility Tree:', accessibilityTree);
 
-    processTree(accessibilityTree);
+    await processTree(accessibilityTree);
 
     // Create debounced update function
     let debounceTimeout: number | undefined;
@@ -150,14 +166,10 @@ export async function afterDOMLoaded(): Promise<void> {
       }
 
       debounceTimeout = window.setTimeout(() => {
-        const updatedTree = getAccessibilityTree();
-        console.log('Updated Accessibility Tree:', updatedTree);
-
-        chrome.runtime.sendMessage({
-          type: 'ACCESSIBILITY_TREE_UPDATED',
-          payload: updatedTree
-        });
-      }, 500);
+        accessibilityTree = getAccessibilityTree();
+        console.error('Updated Accessibility Tree (ignored):', accessibilityTree);
+        // processTree(accessibilityTree);
+        }, 500);
     };
 
     // Set up mutation observer to watch for DOM changes

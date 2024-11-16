@@ -34,4 +34,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     getConfigDirect().then(sendResponse);
     return true; // Will respond asynchronously
   }
+  if (message.action === 'elementsSelected') {
+    // Handle the selected elements
+    console.log('Selected elements:', message.elements);
+
+    // You can store the selection in chrome.storage
+    chrome.storage.local.set({
+      lastSelection: message.elements
+    });
+
+    // Or send a notification
+    chrome.notifications.create({
+      type: 'basic',
+      iconUrl: 'icon48.png',
+      title: 'Element(s) Selected',
+      message: `Selected ${message.elements.length} element(s)`
+    });
+    return true;
+  }
 });
