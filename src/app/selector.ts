@@ -1,4 +1,4 @@
-import {accessibilityTree} from "./contentloaded";
+import {AccessibilityNodeInfo, accessibilityTree} from "./contentloaded";
 
 export class ElementSelector {
   private isActive: boolean = false;
@@ -95,13 +95,17 @@ export class ElementSelector {
   private handleMouseUp = (e: MouseEvent) => {
     if (!this.isActive) return;
 
-    if (this.isDragging) {
-      // Handle drag selection
-      const elements = this.getElementsInSelection();
-      this.handleSelection(elements);
-    } else {
-      // Handle click selection
-      this.handleSelection([e.target as HTMLElement]);
+    if (!this.selectorBox) this.handleSelection([]);
+    else {
+      if (this.isDragging) {
+        // Handle drag selection
+        const elements = this.getElementsInSelection(this.selectorBox.getBoundingClientRect());
+        this.handleSelection(elements);
+      } else {
+        // Handle click selection
+        const elements = this.getElementsInSelection((e.target as HTMLElement).getBoundingClientRect());
+        this.handleSelection(elements);
+      }
     }
 
     // Reset state
@@ -119,11 +123,11 @@ export class ElementSelector {
     }
   };
 
-  private getElementsInSelection(): HTMLElement[] {
-    const ret: HTMLElement[] = [];
+  private getElementsInSelection(rect: DOMRect): AccessibilityNodeInfo[] {
+    const ret: AccessibilityNodeInfo[] = [];
 
     if (!this.selectorBox) return [];
-    const rect = this.selectorBox.getBoundingClientRect();
+    // const rect = this.selectorBox.getBoundingClientRect();
     const tree = [accessibilityTree];
 
     while (tree.length > 0) {
@@ -142,26 +146,16 @@ export class ElementSelector {
       if (left > rect.right || right < rect.left || top > rect.bottom || bottom < rect.top) {
         continue;
       }
-      if (element instanceof HTMLElement) {
-        ret.push(element);
-      }
+      ret.push(node);
     }
     return ret;
   }
 
-  private handleSelection(elements: HTMLElement[]) {
-    console.log('Selected elements:', elements);
-
+  private handleSelection(elements: AccessibilityNodeInfo[]) {
     // Send selected elements to background script
     chrome.runtime.sendMessage({
-      action: 'elementsSelected',
-      elements: elements.map(el => ({
-        tagName: el.tagName,
-        id: el.id,
-        className: el.className,
-        textContent: el.textContent?.trim().slice(0, 100),
-        xpath: this.getXPath(el)
-      }))
+      action: 'textSelected',
+      content: elements.map(element => element.content).join('\n')
     });
 
     this.stop();

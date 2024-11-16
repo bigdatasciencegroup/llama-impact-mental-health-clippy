@@ -9,11 +9,11 @@ export const getCompletion = async (request: PostChatCompletionWithDefaults) => 
     throw new Error('Config not loaded');
   }
 
-  const response = await fetch(`${config.apiUrl}/v1/chat/completions`, {
+  const response = await fetch(`${config.conjApiUrl}/v1/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': config.apiKey
+      'x-api-key': config.conjApiKey
     },
     body: JSON.stringify(request)
   });
@@ -32,11 +32,11 @@ export const finetune = async (request: PostFinetuneRequest) => {
 
   if (request.loras.length === 0) {
 
-    const create = await fetch(`${config.apiUrl}/v2/finetune/create_lora`, {
+    const create = await fetch(`${config.conjApiUrl}/v2/finetune/create_lora`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': config.apiKey
+        'x-api-key': config.conjApiKey
       },
       body: JSON.stringify({
         "adapter": {
@@ -67,11 +67,11 @@ export const finetune = async (request: PostFinetuneRequest) => {
     request.loras = [{finetune_cache_id: lora}];
   }
 
-  const response = await fetch(`${config.apiUrl}/v2/finetune/finetune/submit`, {
+  const response = await fetch(`${config.conjApiUrl}/v2/finetune/finetune/submit`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': config.apiKey
+      'x-api-key': config.conjApiKey
     },
     body: JSON.stringify(request)
   });
@@ -88,11 +88,11 @@ export const finetuneStatus = async (request_id: string) => {
     throw new Error('Config not loaded');
   }
 
-  const response = await fetch(`${config.apiUrl}/v2/finetune/finetune/poll`, {
+  const response = await fetch(`${config.conjApiKey}/v2/finetune/finetune/poll`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': config.apiKey
+      'x-api-key': config.conjApiKey
     },
     body: JSON.stringify({request_id})
   });

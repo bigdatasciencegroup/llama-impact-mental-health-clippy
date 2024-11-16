@@ -1,12 +1,18 @@
-export const getCompletion = async (prompt: string): Promise<any> => {
-  const response = await fetch('https://api.groq.com/v1/engines/davinci/completions', {
+import {config} from "../config";
+
+export const getCompletion = async (prompt: string, model: string = 'llama3-8b-8192'): Promise<string> => {
+  if (!config) {
+    throw new Error('Config not loaded');
+  }
+
+  const response = await fetch(`${config.groqApiUrl}/openai/v1/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer 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`
+      'Authorization': `Bearer ${config.groqApiKey}`
     },
     body: JSON.stringify({
-      "model": "llama3-8b-8192",
+      "model": model,
       "messages": [{
         "role": "user",
         "content": prompt

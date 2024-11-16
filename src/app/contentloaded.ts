@@ -1,7 +1,7 @@
 import {createClipCollapse} from "./hiders/collapse";
 import {ElementSelector} from "./selector";
 
-interface AccessibilityNodeInfo {
+export  interface AccessibilityNodeInfo {
   role: string;
   content: string;
   children?: AccessibilityNodeInfo[];

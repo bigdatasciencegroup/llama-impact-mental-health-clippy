@@ -1,4 +1,4 @@
-import { getConfigDirect, setConfig } from './config';
+import {Config, getConfigDirect, setConfig} from './config';
 
 const saveButton = document.getElementById('save') as HTMLButtonElement;
 const statusDiv = document.getElementById('status')!;
@@ -20,13 +20,22 @@ async function loadCurrentConfig() {
   try {
     const config = await getConfigDirect();
     currentConfigDiv.textContent = JSON.stringify({
-      apiKey: config.apiKey ? '****' + config.apiKey.slice(-4) : 'Not set',
-      apiUrl: config.apiUrl || 'Not set'
+      systemPrompt: config.systemPrompt ? (config.systemPrompt.length > 20 ?
+        config.systemPrompt.substring(0, 20) + '...' : config.systemPrompt) : 'Not set',
+      conjApiKey: config.conjApiKey ? '****' + config.conjApiKey.slice(-4) : 'Not set',
+      conjApiUrl: config.conjApiUrl || 'Not set',
+      groqApiKey: config.groqApiKey ? '****' + config.groqApiKey.slice(-4) : 'Not set',
+      groqApiUrl: config.groqApiUrl || 'Not set',
+      groqModel: config.groqModel || 'Not set'
     }, null, 2);
 
     // Pre-fill the form
-    (document.getElementById('apiKey') as HTMLInputElement).value = config.apiKey;
-    (document.getElementById('apiUrl') as HTMLInputElement).value = config.apiUrl;
+    (document.getElementById('systemPrompt') as HTMLTextAreaElement).value = config.systemPrompt;
+    (document.getElementById('conjApiKey') as HTMLInputElement).value = config.conjApiKey;
+    (document.getElementById('conjApiUrl') as HTMLInputElement).value = config.conjApiUrl;
+    (document.getElementById('groqApiKey') as HTMLInputElement).value = config.groqApiKey;
+    (document.getElementById('groqApiUrl') as HTMLInputElement).value = config.groqApiUrl;
+    (document.getElementById('groqModel') as HTMLInputElement).value = config.groqModel;
   } catch (error) {
     currentConfigDiv.textContent = 'Error loading configuration';
     showStatus('Failed to load current configuration: ' + (error as Error).message, true);
@@ -43,21 +52,34 @@ function validateUrl(url: string): boolean {
 }
 
 function validateInputs(): boolean {
-  const apiKey = (document.getElementById('apiKey') as HTMLInputElement).value;
-  const apiUrl = (document.getElementById('apiUrl') as HTMLInputElement).value;
+  const conjApiKey = (document.getElementById('conjApiKey') as HTMLInputElement).value;
+  const conjApiUrl = (document.getElementById('conjApiUrl') as HTMLInputElement).value;
+  const groqApiKey = (document.getElementById('groqApiKey') as HTMLInputElement).value;
+  const groqApiUrl = (document.getElementById('groqApiUrl') as HTMLInputElement).value;
+  const groqModel = (document.getElementById('groqModel') as HTMLInputElement).value;
 
-  if (!apiKey.trim()) {
-    showStatus('API Key is required', true);
+  if (!conjApiKey.trim() || !groqApiKey.trim()) {
+    showStatus('API Keys are required', true);
     return false;
   }
 
-  if (!apiUrl.trim()) {
-    showStatus('API URL is required', true);
+  if (!conjApiUrl.trim() || !groqApiUrl.trim()) {
+    showStatus('API URLs are required', true);
     return false;
   }
 
-  if (!validateUrl(apiUrl)) {
-    showStatus('Invalid API URL format. Please enter a valid URL (e.g., https://api.example.com)', true);
+  if (!validateUrl(conjApiUrl)) {
+    showStatus('Invalid Conjecture API URL format. Please enter a valid URL', true);
+    return false;
+  }
+
+  if (!validateUrl(groqApiUrl)) {
+    showStatus('Invalid Groq API URL format. Please enter a valid URL', true);
+    return false;
+  }
+
+  if (!groqModel.trim()) {
+    showStatus('Groq Model is required', true);
     return false;
   }
 
@@ -67,18 +89,24 @@ function validateInputs(): boolean {
 // Save options
 saveButton.addEventListener('click', async () => {
   try {
-    const apiKey = (document.getElementById('apiKey') as HTMLInputElement).value;
-    const apiUrl = (document.getElementById('apiUrl') as HTMLInputElement).value;
-
     if (!validateInputs()) {
       return;
     }
+
+    const config: Config = {
+      systemPrompt: (document.getElementById('systemPrompt') as HTMLTextAreaElement).value,
+      conjApiKey: (document.getElementById('conjApiKey') as HTMLInputElement).value,
+      conjApiUrl: (document.getElementById('conjApiUrl') as HTMLInputElement).value,
+      groqApiKey: (document.getElementById('groqApiKey') as HTMLInputElement).value,
+      groqApiUrl: (document.getElementById('groqApiUrl') as HTMLInputElement).value,
+      groqModel: (document.getElementById('groqModel') as HTMLInputElement).value
+    };
 
     // Disable the save button while saving
     saveButton.disabled = true;
     saveButton.textContent = 'Saving...';
 
-    await setConfig({ apiKey, apiUrl });
+    await setConfig(config);
     showStatus('Settings saved successfully!');
 
     // Reload the current configuration display
@@ -91,42 +119,6 @@ saveButton.addEventListener('click', async () => {
     saveButton.textContent = 'Save Settings';
   }
 });
-
-// Test connection button (optional)
-// const testButton = document.createElement('button');
-// testButton.textContent = 'Test Connection';
-// testButton.style.marginLeft = '10px';
-// saveButton.parentNode?.insertBefore(testButton, saveButton.nextSibling);
-
-// testButton.addEventListener('click', async () => {
-//     const apiKey = (document.getElementById('apiKey') as HTMLInputElement).value;
-//     const apiUrl = (document.getElementById('apiUrl') as HTMLInputElement).value;
-
-//     if (!validateInputs()) return;
-
-//     try {
-//         testButton.disabled = true;
-//         testButton.textContent = 'Testing...';
-
-//         const response = await fetch(apiUrl, {
-//             method: 'GET',
-//             headers: {
-//                 'Authorization': `Bearer ${apiKey}`
-//             }
-//         });
-
-//         if (response.ok) {
-//             showStatus('Connection successful!');
-//         } else {
-//             showStatus(`Connection failed: ${response.statusText}`, true);
-//         }
-//     } catch (error) {
-//         showStatus('Connection test failed: ' + (error as Error).message, true);
-//     } finally {
-//         testButton.disabled = false;
-//         testButton.textContent = 'Test Connection';
-//     }
-// });
 
 // Load current configuration when the page loads
 document.addEventListener('DOMContentLoaded', loadCurrentConfig);
