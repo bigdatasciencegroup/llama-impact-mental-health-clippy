@@ -1,6 +1,9 @@
 export interface Config {
   apiKey: string;
   apiUrl: string;
+  groqApiKey: string;
+  groqApiUrl: string;
+  groqModel: string;
 }
 
 // Function to get config in content script
@@ -9,7 +12,10 @@ export async function getConfig(): Promise<Config> {
     chrome.runtime.sendMessage({ type: 'GET_CONFIG' }, (response) => {
       resolve(response || {
         apiKey: '',
-        apiUrl: 'https://api.conjecture.dev/'
+        apiUrl: 'https://api.conjecture.dev/',
+        groqApiKey: '',
+        groqApiUrl: 'https://api.groq.com/',
+        groqModel: 'llama3-8b-8192'
       });
     });
   });
@@ -21,7 +27,10 @@ export async function getConfigDirect(): Promise<Config> {
     chrome.storage.sync.get(['apiKey', 'apiUrl'], (result) => {
       resolve({
         apiKey: result.apiKey || '',
-        apiUrl: result.apiUrl || 'https://api.conjecture.dev/'
+        apiUrl: result.apiUrl || 'https://api.conjecture.dev/',
+        groqApiKey: result.groqApiKey || '',
+        groqApiUrl: result.groqApiUrl || 'https://api.groq.com/',
+        groqModel: result.groqModel || 'llama3-8b-8192'
       });
     });
   });

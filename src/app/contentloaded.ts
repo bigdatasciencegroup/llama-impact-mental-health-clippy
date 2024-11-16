@@ -1,14 +1,16 @@
+import {createClipCollapse, createCollapsible} from "./hiders/collapse";
+
 interface AccessibilityNodeInfo {
   role: string;
-  name: string;
+  content: string;
   children?: AccessibilityNodeInfo[];
-  value?: string;
   states?: string[];
   attributes?: Record<string, string>;
   boundingBox?: DOMRect;
+  element: HTMLElement;  // Store the actual DOM element
 }
 
-const processNode = (element: Element): AccessibilityNodeInfo => {
+const processNode = (element: HTMLElement): AccessibilityNodeInfo => {
   // Get computed role
   const role = element.getAttribute('role') || element.tagName.toLowerCase();
 
@@ -48,33 +50,81 @@ const processNode = (element: Element): AccessibilityNodeInfo => {
   // Create node info
   const nodeInfo: AccessibilityNodeInfo = {
     role: role,
-    name: getAccessibleName(element).trim(),
+    content: getAccessibleName(element).trim(),
     children: [],
     states: states,
     attributes: attributes,
-    boundingBox: boundingBox
+    boundingBox: boundingBox,
+    element: element
   };
 
   // Get value if applicable
   if (element instanceof HTMLInputElement ||
     element instanceof HTMLTextAreaElement ||
     element instanceof HTMLSelectElement) {
-    nodeInfo.value = element.value;
+    nodeInfo.content += ': ' +element.value;
   }
 
   // Process children that are not hidden
   Array.from(element.children)
+    .filter((child): child is HTMLElement => child instanceof HTMLElement)
     .filter(child => !child.hasAttribute('aria-hidden') &&
       !child.getAttribute('hidden') &&
       getComputedStyle(child).display !== 'none')
     .forEach(child => {
       nodeInfo.children?.push(processNode(child));
     });
-
   return nodeInfo;
 };
 
-const processTree = (tree: AccessibilityNodeInfo): void => {
+
+const collapsedElements = new Set<() => void>();
+const collapseElement = (element: HTMLElement): void => {
+  // collapsedElements.add(createBlurOverlay(element));
+  collapsedElements.add(createClipCollapse(element));
+}
+
+const blockPredicate = async (content: string): Promise<boolean> => {
+  if (content.toLowerCase().includes('x')) {
+    return true;
+  }
+  return false;
+}
+
+const processTree = async (tree: AccessibilityNodeInfo): Promise<void> => {
+  if (tree.content.length > 3500) {
+    if (tree.children === undefined || tree.children.length === 0) {
+      console.error('leaf node too large - ignoring');
+    }
+    tree.children?.map(child => processTree(child));
+  } else if (tree.content.length < 5) {
+    // we really don't care about this
+    // do nothing
+  } else if (tree.content.length < 500) {
+    // definitely group this as a group
+    if (await blockPredicate(tree.content)) {
+      collapseElement(tree.element);
+    }
+  } else {
+    // see if we want to cut these up or nah
+    let continue_recurse: boolean = false;
+    if (tree.children !== undefined && tree.children.length > 0) {
+      const children_length = tree.children.map(c => c.content.length);
+      // calculate variance
+      const mean = children_length.reduce((a, b) => a + b) / children_length.length;
+      const variance = children_length.reduce((a, b) => a + (b - mean) ** 2) / children_length.length;
+      if (variance < 500) {
+        continue_recurse = true;
+      }
+    }
+    if (continue_recurse) {
+      tree.children?.map(child => processTree(child));
+    } else {
+      if (await blockPredicate(tree.content)) {
+        collapseElement(tree.element);
+      }
+    }
+  }
 }
 
 export async function afterDOMLoaded(): Promise<void> {
