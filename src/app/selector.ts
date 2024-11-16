@@ -1,4 +1,5 @@
-import {AccessibilityNodeInfo, accessibilityTree} from "./contentloaded";
+import {AccessibilityNodeInfo, accessibilityTree, addCollapsedElementHandler} from "./contentloaded";
+import {createBlurOverlay} from "./hiders/blur";
 
 export class ElementSelector {
   private isActive: boolean = false;
@@ -51,6 +52,7 @@ export class ElementSelector {
 
     // Initialize selector box position
     if (this.selectorBox) {
+
       this.selectorBox.style.left = `${this.startX}px`;
       this.selectorBox.style.top = `${this.startY}px`;
     }
@@ -68,6 +70,9 @@ export class ElementSelector {
     }
 
     if (this.isDragging && this.selectorBox) {
+      if (this.previousElement) {
+        this.previousElement.style.outline = '';
+      }
       // Update selector box dimensions
       const width = e.clientX - this.startX;
       const height = e.clientY - this.startY;
@@ -95,18 +100,21 @@ export class ElementSelector {
   private handleMouseUp = (e: MouseEvent) => {
     if (!this.isActive) return;
 
-    if (!this.selectorBox) this.handleSelection([]);
-    else {
       if (this.isDragging) {
-        // Handle drag selection
-        const elements = this.getElementsInSelection(this.selectorBox.getBoundingClientRect());
-        this.handleSelection(elements);
+        if (this.selectorBox === null) this.handleSelection([]);
+        else {
+          // Handle drag selection
+          const elements = this.getElementsInSelection(this.selectorBox.getBoundingClientRect());
+          this.handleSelection(elements);
+        }
       } else {
         // Handle click selection
-        const elements = this.getElementsInSelection((e.target as HTMLElement).getBoundingClientRect());
-        this.handleSelection(elements);
+        if (this.previousElement === null) this.handleSelection([]);
+        else {
+          const elements = this.getElementsInSelection((this.previousElement).getBoundingClientRect());
+          this.handleSelection(elements);
+        }
       }
-    }
 
     // Reset state
     this.isDragging = false;
@@ -124,34 +132,60 @@ export class ElementSelector {
   };
 
   private getElementsInSelection(rect: DOMRect): AccessibilityNodeInfo[] {
+    console.log('Rect:', rect);
     const ret: AccessibilityNodeInfo[] = [];
 
     if (!this.selectorBox) return [];
-    // const rect = this.selectorBox.getBoundingClientRect();
+
+    // Get scroll offsets
+    const scrollX = document.documentElement.scrollLeft;
+    const scrollY = document.documentElement.scrollTop;
+
+    // Adjust rect coordinates by adding scroll offset
+    const adjustedRect = {
+      left: rect.left + scrollX,
+      right: rect.right + scrollX,
+      top: rect.top + scrollY,
+      bottom: rect.bottom + scrollY
+    };
+    console.log('Adjusted rect:', adjustedRect);
+
     const tree = [accessibilityTree];
 
     while (tree.length > 0) {
       const node = tree.pop();
       if (node === undefined) continue;
       tree.push(...(node.children || []));
+
+      // Skip non-leaf nodes
       if (node.children !== undefined && node.children.length > 0) continue;
-      if (node.boundingBox === undefined) {
-        continue;
-      }
-      const {boundingBox, element} = node;
-      if (boundingBox === undefined || element === undefined) {
-        continue;
-      }
+
+      // Skip nodes without bounding box or element
+      if (!node.boundingBox || !node.element) continue;
+
+      const {boundingBox} = node;
       const {top, left, right, bottom} = boundingBox;
-      if (left > rect.right || right < rect.left || top > rect.bottom || bottom < rect.top) {
+
+      // Compare with scroll-adjusted rect coordinates
+      if (left > adjustedRect.right ||
+        right < adjustedRect.left ||
+        top > adjustedRect.bottom ||
+        bottom < adjustedRect.top) {
         continue;
       }
+
       ret.push(node);
     }
+
     return ret;
   }
 
   private handleSelection(elements: AccessibilityNodeInfo[]) {
+    console.log('Selected elements:', elements);
+
+    // blur the selected elements
+    elements.map(e => createBlurOverlay(e.element)).forEach(f => addCollapsedElementHandler(f));
+
     // Send selected elements to background script
     chrome.runtime.sendMessage({
       action: 'textSelected',

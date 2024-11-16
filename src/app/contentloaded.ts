@@ -1,5 +1,7 @@
 import {createClipCollapse} from "./hiders/collapse";
 import {ElementSelector} from "./selector";
+import {config, getConfig} from "../config";
+import {getCompletion} from "./groq";
 
 export  interface AccessibilityNodeInfo {
   role: string;
@@ -80,16 +82,39 @@ const processNode = (element: HTMLElement): AccessibilityNodeInfo => {
 
 
 const collapsedElements = new Set<() => void>();
+export const addCollapsedElementHandler = (handler: () => void): void => {
+  collapsedElements.add(handler);
+}
 const collapseElement = (element: HTMLElement): void => {
   // collapsedElements.add(createBlurOverlay(element));
   collapsedElements.add(createClipCollapse(element));
 }
 
-const blockPredicate = async (content: string): Promise<boolean> => {
-  if (content.toLowerCase().includes('x')) {
-    return true;
+const getSystemPrompt = (): string => {
+  if (!config) {
+    throw new Error('Config not loaded');
   }
+
+  return `Use the following guidelines to evaluate the user's message, and respond with a decision for blocking or allowing the content based on the following:
+${config.systemPrompt}
+
+To block, output "DROP". To allow, output "FORWARD". Please be terse and output one of DROP or FORWARD.`;
+}
+
+const blockPredicate = async (content: string): Promise<boolean> => {
+  const resp = await getCompletion([{role: 'system', content: getSystemPrompt()},{role: 'user', content: content}]);
+
+  if (resp.includes('DROP')) {
+    return true;
+  } else if (resp.includes('FORWARD')) {
+    return false;
+  }
+  console.log('Invalid response - defaulting to FORWARD:', resp);
   return false;
+  // if (content.toLowerCase().includes('x')) {
+  //   return true;
+  // }
+  // return false;
 }
 
 const processTree = async (tree: AccessibilityNodeInfo): Promise<void> => {
@@ -155,6 +180,8 @@ export async function afterDOMLoaded(): Promise<void> {
 
     // Log the complete tree
     console.log('Initial Accessibility Tree:', accessibilityTree);
+
+    await getConfig();  // depending on side effects is terrible terrible terrible
 
     await processTree(accessibilityTree);
 

@@ -1,6 +1,11 @@
 import {config} from "../config";
 
-export const getCompletion = async (prompt: string, model: string = 'llama3-8b-8192'): Promise<string> => {
+export type Messages = Array<{
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}>;
+export const getCompletion = async (prompt: Messages | string, model: string = 'llama3-8b-8192'): Promise<string> => {
+  const messages = typeof prompt === 'string' ? [{role: 'user', content: prompt}] : prompt;
   if (!config) {
     throw new Error('Config not loaded');
   }
@@ -13,10 +18,7 @@ export const getCompletion = async (prompt: string, model: string = 'llama3-8b-8
     },
     body: JSON.stringify({
       "model": model,
-      "messages": [{
-        "role": "user",
-        "content": prompt
-      }]
+      "messages": messages
     })
   });
 

@@ -30,7 +30,7 @@ export async function getConfig(): Promise<Config> {
 // Function to get config in background/options pages
 export async function getConfigDirect(): Promise<Config> {
   config = await new Promise((resolve) => {
-    chrome.storage.sync.get(null, (result) => {
+    chrome.storage.local.get(null, (result) => {
       console.log("Got config", result);
       resolve({
         conjApiKey: result.apiKey || '',
@@ -53,7 +53,7 @@ export async function getConfigDirect(): Promise<Config> {
 export async function setConfig(config: Partial<Config>): Promise<void> {
   return new Promise((resolve) => {
     console.log("Setting config", config);
-    chrome.storage.sync.set(config).then(() => {
+    chrome.storage.local.set(config).then(() => {
       resolve();
     }).catch((error) => {
       console.error('Failed to set config:', error);

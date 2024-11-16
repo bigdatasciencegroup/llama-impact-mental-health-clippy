@@ -37,12 +37,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   if (message.action === 'textSelected') {
     // You can store the selection in chrome.storage
-    chrome.storage.sync.get({ flaggedHistory: [] }, async (result) => {
+    chrome.storage.local.get({ flaggedHistory: [] }, async (result) => {
       console.log('Flagged history:', result.flaggedHistory);
       const history = result.flaggedHistory;
       if (message.content.trim().length > 50)
         history.push({content: message.content, timestamp: new Date().toISOString()});
-      await chrome.storage.sync.set({flaggedHistory: history});
+      await chrome.storage.local.set({flaggedHistory: history});
       await updateSystemPrompt(message.content);
     });
 
