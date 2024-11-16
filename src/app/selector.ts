@@ -156,7 +156,7 @@ export class ElementSelector {
     chrome.runtime.sendMessage({
       action: 'textSelected',
       content: elements.map(element => element.content).join('\n')
-    });
+    }).catch(console.error);
 
     this.stop();
   }

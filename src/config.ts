@@ -53,7 +53,12 @@ export async function getConfigDirect(): Promise<Config> {
 export async function setConfig(config: Partial<Config>): Promise<void> {
   return new Promise((resolve) => {
     console.log("Setting config", config);
-    chrome.storage.sync.set(config, resolve);
+    chrome.storage.sync.set(config).then(() => {
+      resolve();
+    }).catch((error) => {
+      console.error('Failed to set config:', error);
+      throw new Error('Failed to set config');
+    });
   });
 }
 

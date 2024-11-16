@@ -1,4 +1,5 @@
-import {Config, getConfigDirect, setConfig} from './config';
+import { getConfigDirect, setConfig } from './config';
+import type { Config } from './config';
 
 const saveButton = document.getElementById('save') as HTMLButtonElement;
 const statusDiv = document.getElementById('status')!;
@@ -30,12 +31,12 @@ async function loadCurrentConfig() {
     }, null, 2);
 
     // Pre-fill the form
-    (document.getElementById('systemPrompt') as HTMLTextAreaElement).value = config.systemPrompt;
-    (document.getElementById('conjApiKey') as HTMLInputElement).value = config.conjApiKey;
-    (document.getElementById('conjApiUrl') as HTMLInputElement).value = config.conjApiUrl;
-    (document.getElementById('groqApiKey') as HTMLInputElement).value = config.groqApiKey;
-    (document.getElementById('groqApiUrl') as HTMLInputElement).value = config.groqApiUrl;
-    (document.getElementById('groqModel') as HTMLInputElement).value = config.groqModel;
+    (document.getElementById('systemPrompt') as HTMLTextAreaElement).value = config.systemPrompt || '';
+    (document.getElementById('conjApiKey') as HTMLInputElement).value = config.conjApiKey || '';
+    (document.getElementById('conjApiUrl') as HTMLInputElement).value = config.conjApiUrl || '';
+    (document.getElementById('groqApiKey') as HTMLInputElement).value = config.groqApiKey || '';
+    (document.getElementById('groqApiUrl') as HTMLInputElement).value = config.groqApiUrl || '';
+    (document.getElementById('groqModel') as HTMLInputElement).value = config.groqModel || '';
   } catch (error) {
     currentConfigDiv.textContent = 'Error loading configuration';
     showStatus('Failed to load current configuration: ' + (error as Error).message, true);
@@ -43,6 +44,7 @@ async function loadCurrentConfig() {
 }
 
 function validateUrl(url: string): boolean {
+  if (!url) return true; // Empty URLs are valid now
   try {
     new URL(url);
     return true;
@@ -52,34 +54,17 @@ function validateUrl(url: string): boolean {
 }
 
 function validateInputs(): boolean {
-  const conjApiKey = (document.getElementById('conjApiKey') as HTMLInputElement).value;
   const conjApiUrl = (document.getElementById('conjApiUrl') as HTMLInputElement).value;
-  const groqApiKey = (document.getElementById('groqApiKey') as HTMLInputElement).value;
   const groqApiUrl = (document.getElementById('groqApiUrl') as HTMLInputElement).value;
-  const groqModel = (document.getElementById('groqModel') as HTMLInputElement).value;
 
-  if (!conjApiKey.trim() || !groqApiKey.trim()) {
-    showStatus('API Keys are required', true);
+  // Only validate URLs if they are provided
+  if (conjApiUrl && !validateUrl(conjApiUrl)) {
+    showStatus('Invalid Conjecture API URL format. Please enter a valid URL or leave it empty', true);
     return false;
   }
 
-  if (!conjApiUrl.trim() || !groqApiUrl.trim()) {
-    showStatus('API URLs are required', true);
-    return false;
-  }
-
-  if (!validateUrl(conjApiUrl)) {
-    showStatus('Invalid Conjecture API URL format. Please enter a valid URL', true);
-    return false;
-  }
-
-  if (!validateUrl(groqApiUrl)) {
-    showStatus('Invalid Groq API URL format. Please enter a valid URL', true);
-    return false;
-  }
-
-  if (!groqModel.trim()) {
-    showStatus('Groq Model is required', true);
+  if (groqApiUrl && !validateUrl(groqApiUrl)) {
+    showStatus('Invalid Groq API URL format. Please enter a valid URL or leave it empty', true);
     return false;
   }
 
