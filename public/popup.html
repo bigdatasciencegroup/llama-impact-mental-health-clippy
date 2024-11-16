@@ -1,50 +1,125 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Element Selector</title>
+    <title>Clippy Element Selector</title>
     <style>
         body {
             width: 300px;
+            padding: 20px;
+            font-family: "Segoe UI", Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+        }
+
+        .container {
+            background-color: white;
+            border-radius: 12px;
             padding: 16px;
-            font-family: Arial, sans-serif;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
         }
 
-        button {
-            width: 100%;
-            padding: 10px;
-            margin: 5px 0;
-            background-color: #4CAF50;
-            color: white;
+        .title {
+            font-size: 18px;
+            color: #2d3748;
+            margin: 12px 0;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #718096;
+            margin-bottom: 16px;
+            line-height: 1.4;
+        }
+
+        .clippy-button {
+            background: none;
             border: none;
-            border-radius: 4px;
             cursor: pointer;
+            padding: 8px;
+            margin: 0 auto;
+            display: block;
+            transition: all 0.2s ease;
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
         }
 
-        button:hover {
-            background-color: #45a049;
+        .clippy-button:hover {
+            background-color: #ebf8ff;
+            transform: scale(1.1) rotate(15deg);
+        }
+
+        .clippy-button:hover svg {
+            stroke: #3182ce;
+        }
+
+        .clippy-button:active {
+            transform: scale(0.95) rotate(15deg);
+        }
+
+        .clippy-button svg {
+            width: 48px;
+            height: 48px;
+            stroke: #4299e1;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
+            transition: all 0.2s ease;
         }
 
         #status {
-            margin-top: 10px;
-            padding: 10px;
-            border-radius: 4px;
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
             display: none;
         }
 
         .success {
-            background-color: #dff0d8;
-            color: #3c763d;
+            background-color: #c6f6d5;
+            color: #2f855a;
         }
 
         .error {
-            background-color: #f2dede;
-            color: #a94442;
+            background-color: #fed7d7;
+            color: #c53030;
+        }
+
+        .action-hint {
+            font-size: 13px;
+            color: #a0aec0;
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .action-hint svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
         }
     </style>
 </head>
 <body>
-<button id="startSelection">Start Element Selector</button>
-<div id="status"></div>
+<div class="container">
+    <h1 class="title">Hey there! I'm Clippy</h1>
+    <p class="subtitle">Click to start clipping out content</p>
+    <button id="startSelection" class="clippy-button" aria-label="Start element selection">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+        </svg>
+    </button>
+    <div id="status"></div>
+</div>
 <script src="popup.js"></script>
 </body>
 </html>

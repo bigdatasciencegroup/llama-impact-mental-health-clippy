@@ -67,7 +67,7 @@ export const finetune = async (request: PostFinetuneRequest) => {
     request.loras = [{finetune_cache_id: lora}];
   }
 
-  const response = await fetch(`${config.conjApiUrl}/v2/finetune/finetune/submit`, {
+  const response = await fetch(`${config.conjApiUrl}/v2/finetune/finetune`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

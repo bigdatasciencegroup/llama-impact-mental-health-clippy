@@ -63,6 +63,7 @@ const updateSystemPrompt = async (new_flagged: string) => {
   if (updateQueue.length > 1) return;
 
   while (updateQueue.length > 0) {
+    await chrome.storage.local.set({ training : true });
     const new_flagged = updateQueue.shift();
     const system_prompt: string = (config.systemPrompt.trim().length > 10) ? config.systemPrompt: DEFAULT_SYSTEM_PROMPT;
     console.log('Using system prompt:', system_prompt);
@@ -88,4 +89,5 @@ Remember to output in the same format as the input.`, "llama3-70b-8192");
     config.systemPrompt = parsed_system_prompt;
     await setConfig(config);
   }
+  await chrome.storage.local.set({ training : false });
 }
