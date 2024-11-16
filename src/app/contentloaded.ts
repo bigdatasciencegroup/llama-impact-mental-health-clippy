@@ -1,4 +1,4 @@
-import {createClipCollapse, createCollapsible} from "./hiders/collapse";
+import {createClipCollapse} from "./hiders/collapse";
 
 interface AccessibilityNodeInfo {
   role: string;
@@ -7,7 +7,7 @@ interface AccessibilityNodeInfo {
   states?: string[];
   attributes?: Record<string, string>;
   boundingBox?: DOMRect;
-  element: HTMLElement;  // Store the actual DOM element
+  element: HTMLElement;
 }
 
 const processNode = (element: HTMLElement): AccessibilityNodeInfo => {

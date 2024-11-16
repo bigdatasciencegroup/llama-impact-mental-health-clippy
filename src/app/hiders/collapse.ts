@@ -1,24 +1,16 @@
+// Global registry to track all active clips
+const clipRegistry = new Map<HTMLElement, {
+  clipButton: HTMLElement;
+  updatePosition: () => void;
+}>();
+
 interface ClipCollapseOptions {
   clipSize?: string;
   blurAmount?: string;
-  overlayColor?: string;
   animationDuration?: string;
   collapsedHeight?: string;
   zIndex?: number;
 }
-
-const ClipCollapseRegistry = {
-  instances: new Set<() => void>(),
-  register(updateFn: () => void) {
-    this.instances.add(updateFn);
-  },
-  unregister(updateFn: () => void) {
-    this.instances.delete(updateFn);
-  },
-  updateAll() {
-    this.instances.forEach(updateFn => updateFn());
-  }
-};
 
 function createClipCollapse(
   element: HTMLElement,
@@ -27,7 +19,6 @@ function createClipCollapse(
   const {
     clipSize = '1.5rem',
     blurAmount = '5px',
-    overlayColor = 'rgba(255, 255, 255, 0.8)',
     animationDuration = '0.3s',
     collapsedHeight = '10px',
     zIndex = 9999
@@ -37,24 +28,17 @@ function createClipCollapse(
   const originalStyles = {
     height: element.style.height,
     transition: element.style.transition,
-    overflow: element.style.overflow
+    overflow: element.style.overflow,
+    filter: element.style.filter,
   };
 
   // Set initial element styles
-  element.style.height = collapsedHeight;
-  element.style.overflow = 'hidden';
-  element.style.transition = `height ${animationDuration}`;
-
-  // Create blur overlay
-  const overlay = document.createElement('div');
-  Object.assign(overlay.style, {
-    position: 'fixed',
-    backgroundColor: overlayColor,
-    backdropFilter: `blur(${blurAmount})`,
-    WebkitBackdropFilter: `blur(${blurAmount})`,
-    transition: `opacity ${animationDuration}`,
-    pointerEvents: 'none',
-    zIndex: zIndex.toString()
+  Object.assign(element.style, {
+    height: collapsedHeight,
+    overflow: 'hidden',
+    transition: `height ${animationDuration}, filter ${animationDuration}, -webkit-filter ${animationDuration}`,
+    filter: `blur(${blurAmount})`,
+    WebkitFilter: `blur(${blurAmount})` // Safari support
   });
 
   // Create clip button
@@ -71,73 +55,26 @@ function createClipCollapse(
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: (zIndex + 1).toString()
+    zIndex: zIndex.toString()
   });
   clipButton.textContent = '📎';
 
-  // Add elements to document body
-  document.body.appendChild(overlay);
+  // Add clip button to document body
   document.body.appendChild(clipButton);
 
-  // Function to update positions with debouncing
-  let updateTimeout: number | null = null;
-  const updatePositions = () => {
-    if (updateTimeout) {
-      window.clearTimeout(updateTimeout);
-    }
-    updateTimeout = window.setTimeout(() => {
-      const rect = element.getBoundingClientRect();
-
-      // Position overlay
-      Object.assign(overlay.style, {
-        top: `${rect.top}px`,
-        left: `${rect.left}px`,
-        width: `${rect.width}px`,
-        height: `${rect.height}px`
-      });
-
-      // Position clip button
-      Object.assign(clipButton.style, {
-        top: `${rect.top - 8}px`,
-        left: `${rect.left - 8}px`
-      });
-    }, 16); // Debounce for approximately one frame
+  // Function to update position of this clip
+  const updatePosition = () => {
+    const rect = element.getBoundingClientRect();
+    Object.assign(clipButton.style, {
+      top: `${rect.top - 8}px`,
+      left: `${rect.left - 8}px`
+    });
   };
 
-  // Create observers
-  const resizeObserver = new ResizeObserver(() => {
-    updatePositions();
-  });
-
-  const mutationObserver = new MutationObserver((mutations) => {
-    const shouldUpdate = mutations.some(mutation =>
-      mutation.type === 'attributes' &&
-      (mutation.attributeName === 'style' || mutation.attributeName === 'class')
-    );
-    if (shouldUpdate) {
-      updatePositions();
-    }
-  });
-
-  // Observe the element and its parent for changes
-  resizeObserver.observe(element);
-  mutationObserver.observe(element, {
-    attributes: true,
-    attributeFilter: ['style', 'class']
-  });
-
-  // Also observe parent elements up to body for style/class changes
-  let parent = element.parentElement;
-  while (parent && parent !== document.body) {
-    mutationObserver.observe(parent, {
-      attributes: true,
-      attributeFilter: ['style', 'class']
-    });
-    parent = parent.parentElement;
-  }
-
-  // Register this instance's update function
-  ClipCollapseRegistry.register(updatePositions);
+  // Function to update all registered clips
+  const updateAllClips = () => {
+    clipRegistry.forEach(clip => clip.updatePosition());
+  };
 
   // Track state
   let isCollapsed = true;
@@ -149,54 +86,91 @@ function createClipCollapse(
 
     if (isCollapsed) {
       element.style.height = collapsedHeight;
-      overlay.style.opacity = '1';
+      element.style.filter = `blur(${blurAmount})`;
       clipButton.style.transform = 'rotate(0deg)';
     } else {
       element.style.height = fullHeight;
-      overlay.style.opacity = '0';
+      element.style.filter = 'blur(0)';
       clipButton.style.transform = 'rotate(-45deg)';
     }
 
-    // Update positions of all clips after animation
-    setTimeout(() => {
-      ClipCollapseRegistry.updateAll();
-    }, parseFloat(animationDuration) * 1000);
+    // Update all clips after height change
+    setTimeout(updateAllClips, parseFloat(animationDuration) * 1000);
   };
+
+  // Create mutation observer to watch for position changes
+  const observer = new MutationObserver(() => {
+    updatePosition();
+    // Small delay to catch any subsequent layout changes
+    setTimeout(updatePosition, 50);
+  });
+
+  // Watch for changes that might affect position
+  observer.observe(element, {
+    attributes: true,
+    childList: true,
+    subtree: true,
+    characterData: true
+  });
+
+  // Also watch the parent element for changes
+  if (element.parentElement) {
+    observer.observe(element.parentElement, {
+      attributes: true,
+      childList: true,
+      subtree: false,
+      characterData: true
+    });
+  }
 
   // Add event listeners
   clipButton.addEventListener('click', toggleCollapse);
-  window.addEventListener('scroll', updatePositions);
-  window.addEventListener('resize', updatePositions);
+  window.addEventListener('scroll', updateAllClips);
+  window.addEventListener('resize', updateAllClips);
+
+  // Add to registry
+  clipRegistry.set(element, {
+    clipButton,
+    updatePosition
+  });
 
   // Initial position update
-  updatePositions();
+  updatePosition();
 
   // Return cleanup function
   return () => {
     // Restore original styles
     Object.assign(element.style, originalStyles);
 
-    // Remove added elements
-    document.body.removeChild(overlay);
+    // Remove clip button
     document.body.removeChild(clipButton);
 
     // Remove event listeners
     clipButton.removeEventListener('click', toggleCollapse);
-    window.removeEventListener('scroll', updatePositions);
-    window.removeEventListener('resize', updatePositions);
+    window.removeEventListener('scroll', updateAllClips);
+    window.removeEventListener('resize', updateAllClips);
 
-    // Disconnect observers
-    resizeObserver.disconnect();
-    mutationObserver.disconnect();
+    // Disconnect observer
+    observer.disconnect();
 
-    // Unregister this instance
-    ClipCollapseRegistry.unregister(updatePositions);
-
-    // Clear any pending updates
-    if (updateTimeout) {
-      window.clearTimeout(updateTimeout);
-    }
+    // Remove from registry
+    clipRegistry.delete(element);
   };
 }
+
+// Example usage in Chrome extension content script:
+/*
+// Create clip collapse
+const cleanup = createClipCollapse(document.querySelector('.target-element'), {
+  clipSize: '1.5rem',
+  blurAmount: '8px',
+  animationDuration: '0.4s',
+  collapsedHeight: '12px',
+  zIndex: 10000
+});
+
+// Remove clip collapse when needed
+cleanup();
+*/
 
 export { createClipCollapse, ClipCollapseOptions };
