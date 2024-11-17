@@ -2,6 +2,32 @@ document.addEventListener('DOMContentLoaded', () => {
   const button = document.getElementById('startSelection');
   const status = document.getElementById('status');
 
+  // Function to check training status
+  async function checkTrainingStatus() {
+    const { training } = await chrome.storage.local.get({ training: false });
+    if (button) {
+      if (training) {
+        button.classList.add('training');
+        if (status) {
+          status.textContent = 'Training...';
+          status.style.display = 'block';
+        }
+      } else {
+        button.classList.remove('training');
+        if (status) {
+          status.textContent = '';
+          status.style.display = 'none';
+        }
+      }
+    }
+  }
+
+  // Initial check
+  checkTrainingStatus();
+
+  // Set up polling
+  const pollInterval = setInterval(checkTrainingStatus, 1000);
+
   if (button) {
     // Handle click
     button.addEventListener('click', () => {
@@ -15,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (status) {
         status.textContent = 'Selecting element';
         // status.className = 'success';
-        // status.style.display = 'block';
+        status.style.display = 'block';
       }
 
       // Small delay for animation
@@ -30,4 +56,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }, 300);
     });
   }
+
+  // Cleanup polling when popup closes
+  window.addEventListener('unload', () => {
+    clearInterval(pollInterval);
+  });
 });

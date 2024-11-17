@@ -2,7 +2,7 @@ import type {FinetuneV2Client, PostChatCompletionWithDefaults} from "@conjecture
 
 import {config} from "../config";
 
-export type PostFinetuneRequest = Parameters<FinetuneV2Client['finetune']>[0];
+export type PostFinetuneStepRequest = Parameters<FinetuneV2Client['finetuneStep']>[0];
 
 export const getCompletion = async (request: PostChatCompletionWithDefaults) => {
   if (!config) {
@@ -25,62 +25,72 @@ export const getCompletion = async (request: PostChatCompletionWithDefaults) => 
   return await response.json();
 }
 
-export const finetune = async (request: PostFinetuneRequest) => {
+export const finetune = async (steps: PostFinetuneStepRequest[]) => {
   if (!config) {
     throw new Error('Config not loaded');
   }
 
-  if (request.loras.length === 0) {
-
-    const create = await fetch(`${config.conjApiUrl}/v2/finetune/create_lora`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': config.conjApiKey
-      },
-      body: JSON.stringify({
-        "adapter": {
-          "rank": 1,
-          "targets": [
-            "wq"
-          ]
-        },
-        "init": {
-          "type": "normal",
-          "mean": 0,
-          "std": 0.02,
-          "seed": 42
-        }
-      })
-    });
-
-    if (!create.ok) {
-      throw new Error(`HTTP error! status: ${create.status}`);
-    }
-
-    const lora = (await create.json())['finetune_cache_id'];
-
-    if (!lora) {
-      throw new Error('Failed to create LORA - no ID returned');
-    }
-
-    request.loras = [{finetune_cache_id: lora}];
-  }
-
-  const response = await fetch(`${config.conjApiUrl}/v2/finetune/finetune`, {
+  const create = await fetch(`${config.conjApiUrl}/v2/finetune/create_lora`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'x-api-key': config.conjApiKey
     },
-    body: JSON.stringify(request)
+    body: JSON.stringify({
+      "adapter": {
+        "rank": 1,
+        "targets": [
+          "wq"
+        ]
+      },
+      "init": {
+        "type": "normal",
+        "mean": 0,
+        "std": 0.02,
+        "seed": 42
+      }
+    })
   });
 
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+  if (!create.ok) {
+    throw new Error(`HTTP error! status: ${create.status}`);
   }
 
-  return await response.json();
+  const lora = (await create.json())['finetune_cache_id'];
+
+  if (!lora) {
+    throw new Error('Failed to create LORA - no ID returned');
+  }
+
+  steps.forEach(s => s.loras = [{finetune_cache_id: lora}]);
+
+  for (const step of steps) {
+    const response = await fetch(`${config.conjApiUrl}/v2/finetune/finetune/step`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': config.conjApiKey
+      },
+      body: JSON.stringify(step)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    console.log(response);
+  }
+
+  const saved = await fetch(`${config.conjApiUrl}/v2/finetune/finetune/save_checkpoint`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': config.conjApiKey
+    },
+    body: JSON.stringify({finetune_cache_id: lora})
+  })
+
+
+  return await saved.json();
 }
 
 export const finetuneStatus = async (request_id: string) => {
@@ -111,9 +121,7 @@ const chat: PostChatCompletionWithDefaults = {
   }], stream: false
 }
 
-
-
-const finetune_data: PostFinetuneRequest = {
+const finetune_data: PostFinetuneStepRequest = {
   loras: [],
   losses: {"sft": {type: "sft", weight: 1.}},
   optim: {
@@ -121,34 +129,29 @@ const finetune_data: PostFinetuneRequest = {
     betas: ["0.9", "0.999"],
     weight_decay: 0.01
   },
-  train: {
-    dataset: {
-      batches: [
-        {
-          items: [
-            {
-              messages: [
-                {
-                  content: "who are you?",
-                  role: "user",
-                  weight: 0.
-                },
-                {
-                  content: "I am clippy!",
-                  role: "assistant",
-                  weight: 1.
-                },
-                {
-                  content: "",
-                  role: "assistant",
-                  weight: 0.
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    }
+  step: 0,
+  batch: {
+    items: [
+      {
+        messages: [
+          {
+            content: "who are you?",
+            role: "user",
+            weight: 0.
+          },
+          {
+            content: "I am clippy!",
+            role: "assistant",
+            weight: 1.
+          },
+          {
+            content: "",
+            role: "assistant",
+            weight: 0.
+          }
+        ]
+      }
+    ]
   }
 }
 

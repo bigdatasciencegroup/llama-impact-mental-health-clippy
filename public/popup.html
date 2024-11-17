@@ -59,6 +59,15 @@
             transform: scale(0.95) rotate(15deg);
         }
 
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
         .clippy-button svg {
             width: 48px;
             height: 48px;
@@ -68,6 +77,19 @@
             stroke-linejoin: round;
             fill: none;
             transition: all 0.2s ease;
+        }
+
+        @keyframes bob {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .clippy-button.training svg {
+            animation: bob 1s ease-in-out infinite;
         }
 
         #status {
@@ -112,7 +134,7 @@
 <body>
 <div class="container">
     <h1 class="title">Hey there! I'm Clippy</h1>
-    <p class="subtitle">Click to start clipping out content</p>
+    <p class="subtitle">Click me to start clipping out content you don't want to see</p>
     <button id="startSelection" class="clippy-button" aria-label="Start element selection">
         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>

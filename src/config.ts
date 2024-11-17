@@ -33,8 +33,8 @@ export async function getConfigDirect(): Promise<Config> {
     chrome.storage.local.get(null, (result) => {
       console.log("Got config", result);
       resolve({
-        conjApiKey: result.apiKey || '',
-        conjApiUrl: result.apiUrl || 'https://api.conjecture.dev/',
+        conjApiKey: result.conjApiKey || '',
+        conjApiUrl: result.conjApiUrl || 'https://api.conjecture.dev/',
         groqApiKey: result.groqApiKey || '',
         groqApiUrl: result.groqApiUrl || 'https://api.groq.com/',
         groqModel: result.groqModel || 'llama3-8b-8192',

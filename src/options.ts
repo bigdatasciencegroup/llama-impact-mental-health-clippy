@@ -1,7 +1,9 @@
 import { getConfigDirect, setConfig } from './config';
 import type { Config } from './config';
+import {finetune, PostFinetuneStepRequest} from "./app/conjecture";
 
 const saveButton = document.getElementById('save') as HTMLButtonElement;
+const conjButton = document.getElementById('trainConjecture') as HTMLButtonElement;
 const statusDiv = document.getElementById('status')!;
 const currentConfigDiv = document.getElementById('currentConfig')!;
 
@@ -104,6 +106,57 @@ saveButton.addEventListener('click', async () => {
     saveButton.textContent = 'Save Settings';
   }
 });
+
+async function trainConjecture() {
+  const dataset = await chrome.storage.local.get({flaggedHistory: []});
+  const flaggedContent: Array<PostFinetuneStepRequest> = dataset.flaggedHistory
+    .map((item: {content: string, timestamp: string}) => item.content)
+    .filter((item: string) => item.trim().length > 10)
+    .map((sample: string) => {
+      return {
+        loras: [],
+        losses: {
+          "sft": {type: "sft", weight: 1.},
+          "kl": {type: "kl", weight: 0.2}
+        },
+        optim: {
+          lr: 1e-4,
+          betas: ["0.9", "0.999"],
+          weight_decay: 0.01
+        },
+        step: 0,
+        batch: {
+          items: [
+            {
+              messages: [
+                {
+                  content: "You are filtering messages into DROP or FORWARD",
+                  role: "system",
+                  weight: 0.
+                },
+                {
+                  content: sample,
+                  role: "user",
+                  weight: 0.
+                },
+                {
+                  content: "DROP",
+                  role: "assistant",
+                  weight: 1.
+                }
+              ]
+            }
+          ]
+        }
+      }
+    });
+
+  // Train the model
+  const resp = await finetune(flaggedContent);
+  console.log(resp)
+}
+
+conjButton.addEventListener('click', trainConjecture);
 
 // Load current configuration when the page loads
 document.addEventListener('DOMContentLoaded', loadCurrentConfig);
