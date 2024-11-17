@@ -68,7 +68,10 @@ const updateSystemPrompt = async (new_flagged: string) => {
     const system_prompt: string = (config.systemPrompt.trim().length > 10) ? config.systemPrompt: DEFAULT_SYSTEM_PROMPT;
     console.log('Using system prompt:', system_prompt);
     // update the system prompt
-    const new_system_prompt = await getCompletion(`The following is a summary of the flagged content so far:
+    let parsed: string[] = []
+    let max_tries = 3;
+    while (parsed.length < 3 && max_tries-- > 0) {
+      const new_system_prompt = await getCompletion(`The following is a summary of the flagged content so far:
 \`\`\`
 ${system_prompt}
 \`\`\`
@@ -80,14 +83,23 @@ ${new_flagged}
 
 Update the summary to also flag the new content. Please keep the summary concise.
 You can drop sections if the newly added content will include it. Wrap your final summary in triple back quotes, like \`\`\`.
-Remember to output in the same format as the input.`, "llama3-70b-8192");
+Remember to output in the same format as the input.`, "llama3-70b-8192") + '\nweird_hack_todo_remove';
 
-    const parsed_system_prompt = new_system_prompt.split('```')[1].trim();
+      console.log('New system prompt response:', new_system_prompt);
 
-    console.log('New system prompt:', parsed_system_prompt);
-    // update the system prompt
-    config.systemPrompt = parsed_system_prompt;
-    await setConfig(config);
+      parsed = new_system_prompt.split('```');
+    }
+
+    if (parsed.length >= 3) {
+      const parsed_system_prompt = parsed[1].trim();
+
+      console.log('New system prompt:', parsed_system_prompt);
+      // update the system prompt
+      config.systemPrompt = parsed_system_prompt;
+      await setConfig(config);
+    } else {
+      console.error('Failed to generate system prompt');
+    }
   }
   await chrome.storage.local.set({ training : false });
 }
